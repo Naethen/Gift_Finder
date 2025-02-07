@@ -29,3 +29,35 @@ export interface FilterOptions {
   categories: string[];
   occasions: string[];
 }
+
+export type PriceRange = {
+  min: number;
+  max: number;
+};
+
+export interface GiftDetails extends Gift {
+  reviews?: Review[];
+  rating?: number;
+  availability: 'in_stock' | 'out_of_stock' | 'pre_order';
+  specifications?: Record<string, string>;
+}
+
+export interface Review {
+  id: string;
+  userId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
+export type GiftCategory = {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl?: string;
+};
+
+export type QuizResponse = {
+  recommendations: Gift[];
+  matchScores: Record<string, number>;
+}
