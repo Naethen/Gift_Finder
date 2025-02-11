@@ -1,237 +1,242 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, Calendar, User, Heart, Tag } from 'lucide-react';
-import type { QuizFormData } from '@/types';
-
-const OCCASIONS = [
-  'Birthday',
-  'Anniversary',
-  'Wedding',
-  'Christmas',
-  'Valentine\'s Day',
-  'Graduation',
-  'Housewarming',
-  'Baby Shower',
-  'Other'
-];
-
-const RELATIONSHIPS = [
-  'Partner',
-  'Parent',
-  'Child',
-  'Sibling',
-  'Friend',
-  'Colleague',
-  'Other'
-];
-
-const INTERESTS = [
-  'Technology',
-  'Cooking',
-  'Reading',
-  'Sports',
-  'Music',
-  'Art',
-  'Gaming',
-  'Fashion',
-  'Travel',
-  'Fitness',
-  'Home Decor',
-  'Gardening'
-];
+import { useQuiz } from '@/hooks/useQuiz';
+import { OCCASIONS, RELATIONSHIPS, INTERESTS, PRICE_RANGES } from '@/data/constants';
 
 export default function GiftQuizForm() {
-  const router = useRouter();
-  const { register, handleSubmit, watch } = useForm<QuizFormData>();
-  const selectedInterests = watch('interests', []);
+  const { handleQuizSubmit, isSubmitting, error } = useQuiz();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [formData, setFormData] = useState({
+    budget: PRICE_RANGES.MODERATE,
+    occasion: '',
+    recipientAge: 25,
+    relationship: '',
+    interests: [] as string[],
+    gender: ''
+  });
 
-  const onSubmitForm = (data: QuizFormData) => {
-    const params = new URLSearchParams({
-      minPrice: data.budget.min.toString(),
-      maxPrice: data.budget.max.toString(),
-      occasion: data.occasion,
-      age: data.recipientAge.toString(),
-      relationship: data.relationship,
-      interests: data.interests.join(',')
-    });
-
-    router.push(`/results?${params.toString()}`);
-  };
-
-  const formAnimation = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5,
-        staggerChildren: 0.1
-      }
+  const handleNext = () => {
+    if (validateCurrentStep()) {
+      setCurrentStep(prev => prev + 1);
     }
   };
 
-  const itemAnimation = {
-    hidden: { opacity: 0, x: -20 },
-    visible: { opacity: 1, x: 0 }
+  const handleBack = () => {
+    setCurrentStep(prev => prev - 1);
+  };
+
+  const validateCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return formData.budget.min >= 0 && formData.budget.max > formData.budget.min;
+      case 2:
+        return formData.occasion && formData.relationship;
+      case 3:
+        return formData.recipientAge > 0 && formData.recipientAge < 120;
+      case 4:
+        return formData.interests.length > 0;
+      default:
+        return true;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateCurrentStep()) {
+      await handleQuizSubmit(formData);
+    }
+  };
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-4"
+          >
+            <h2 className="text-xl font-semibold mb-4">What's your budget?</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.entries(PRICE_RANGES).map(([range, { min, max }]) => (
+                <button
+                  key={range}
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, budget: { min, max } }))}
+                  className={`p-4 rounded-lg border ${
+                    formData.budget.min === min && formData.budget.max === max
+                      ? 'border-primary bg-primary/10'
+                      : 'border-gray-200'
+                  }`}
+                >
+                  <div className="font-medium">{range}</div>
+                  <div className="text-sm text-gray-500">${min} - ${max}</div>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        );
+
+      case 2:
+        return (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
+            <div>
+              <h2 className="text-xl font-semibold mb-4">What's the occasion?</h2>
+              <select
+                value={formData.occasion}
+                onChange={(e) => setFormData(prev => ({ ...prev, occasion: e.target.value }))}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">Select an occasion</option>
+                {OCCASIONS.map(occasion => (
+                  <option key={occasion} value={occasion}>{occasion}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-semibold mb-4">What's your relationship with them?</h2>
+              <select
+                value={formData.relationship}
+                onChange={(e) => setFormData(prev => ({ ...prev, relationship: e.target.value }))}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">Select relationship</option>
+                {RELATIONSHIPS.map(relation => (
+                  <option key={relation} value={relation}>{relation}</option>
+                ))}
+              </select>
+            </div>
+          </motion.div>
+        );
+
+      case 3:
+        return (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
+            <div>
+              <h2 className="text-xl font-semibold mb-4">How old are they?</h2>
+              <input
+                type="number"
+                value={formData.recipientAge}
+                onChange={(e) => setFormData(prev => ({ ...prev, recipientAge: parseInt(e.target.value) }))}
+                min="0"
+                max="120"
+                className="w-full p-2 border rounded"
+              />
+            </div>
+
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Gender (Optional)</h2>
+              <div className="grid grid-cols-3 gap-4">
+                {['Male', 'Female', 'Other'].map(gender => (
+                  <button
+                    key={gender}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, gender }))}
+                    className={`p-2 rounded border ${
+                      formData.gender === gender
+                        ? 'border-primary bg-primary/10'
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    {gender}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        );
+
+      case 4:
+        return (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-4"
+          >
+            <h2 className="text-xl font-semibold mb-4">What are their interests?</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {INTERESTS.map(interest => (
+                <button
+                  key={interest}
+                  type="button"
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      interests: prev.interests.includes(interest)
+                        ? prev.interests.filter(i => i !== interest)
+                        : [...prev.interests, interest]
+                    }));
+                  }}
+                  className={`p-2 rounded border ${
+                    formData.interests.includes(interest)
+                      ? 'border-primary bg-primary/10'
+                      : 'border-gray-200'
+                  }`}
+                >
+                  {interest}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        );
+    }
   };
 
   return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={formAnimation}
-      className="bg-white rounded-xl shadow-xl overflow-hidden"
-    >
-      <div className="p-8">
-        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-8">
-          {/* Budget Range */}
-          <motion.div variants={itemAnimation} className="space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 mb-2">
-              <DollarSign className="w-5 h-5" />
-              <label className="block text-sm font-medium text-gray-800">
-                Budget Range
-              </label>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="minBudget" className="block text-sm font-medium text-gray-700">
-                  Minimum ($)
-                </label>
-                <input
-                  type="number"
-                  id="minBudget"
-                  {...register('budget.min', { required: true, min: 0 })}
-                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label htmlFor="maxBudget" className="block text-sm font-medium text-gray-700">
-                  Maximum ($)
-                </label>
-                <input
-                  type="number"
-                  id="maxBudget"
-                  {...register('budget.max', { required: true, min: 0 })}
-                  className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
-                />
-              </div>
-            </div>
-          </motion.div>
+    <form onSubmit={handleSubmit} className="space-y-8">
+      {renderStep()}
 
-          {/* Occasion */}
-          <motion.div variants={itemAnimation} className="space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 mb-2">
-              <Calendar className="w-5 h-5" />
-              <label className="block text-sm font-medium text-gray-800">
-                Occasion
-              </label>
-            </div>
-            <select
-              {...register('occasion', { required: true })}
-              className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
-            >
-              <option value="">Select an occasion</option>
-              {OCCASIONS.map(occasion => (
-                <option key={occasion} value={occasion}>
-                  {occasion}
-                </option>
-              ))}
-            </select>
-          </motion.div>
+      {error && (
+        <div className="text-red-500 text-sm mt-2">
+          {error}
+        </div>
+      )}
 
-          {/* Recipient Age */}
-          <motion.div variants={itemAnimation} className="space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 mb-2">
-              <User className="w-5 h-5" />
-              <label className="block text-sm font-medium text-gray-800">
-                Recipient's Age
-              </label>
-            </div>
-            <input
-              type="number"
-              {...register('recipientAge', { required: true, min: 0, max: 120 })}
-              className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
-            />
-          </motion.div>
-
-          {/* Relationship */}
-          <motion.div variants={itemAnimation} className="space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 mb-2">
-              <Heart className="w-5 h-5" />
-              <label className="block text-sm font-medium text-gray-800">
-                Your Relationship to Recipient
-              </label>
-            </div>
-            <select
-              {...register('relationship', { required: true })}
-              className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
-            >
-              <option value="">Select relationship</option>
-              {RELATIONSHIPS.map(relationship => (
-                <option key={relationship} value={relationship}>
-                  {relationship}
-                </option>
-              ))}
-            </select>
-          </motion.div>
-
-          {/* Interests */}
-          <motion.div variants={itemAnimation} className="space-y-4">
-            <div className="flex items-center gap-2 text-indigo-600 mb-2">
-              <Tag className="w-5 h-5" />
-              <label className="block text-sm font-medium text-gray-800">
-                Recipient's Interests
-              </label>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {INTERESTS.map(interest => (
-                <motion.div
-                  key={interest}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="relative flex items-start"
-                >
-                  <div className="flex h-6 items-center">
-                    <input
-                      type="checkbox"
-                      value={interest}
-                      {...register('interests')}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 transition-colors"
-                    />
-                  </div>
-                  <label className="ml-3 text-sm text-gray-700">
-                    {interest}
-                  </label>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          <motion.div
-            variants={itemAnimation}
-            className="pt-6"
+      <div className="flex justify-between mt-8">
+        {currentStep > 1 && (
+          <button
+            type="button"
+            onClick={handleBack}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
           >
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              className="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
-            >
-              <span>Find Perfect Gifts</span>
-              <motion.div
-                className="ml-2"
-                animate={{ x: [0, 5, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                →
-              </motion.div>
-            </motion.button>
-          </motion.div>
-        </form>
+            Back
+          </button>
+        )}
+
+        {currentStep < 4 ? (
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={!validateCurrentStep()}
+            className="ml-auto px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
+          >
+            Next
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={isSubmitting || !validateCurrentStep()}
+            className="ml-auto px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
+          >
+            {isSubmitting ? 'Finding Gifts...' : 'Find Gifts'}
+          </button>
+        )}
       </div>
-    </motion.div>
+    </form>
   );
 }
