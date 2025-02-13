@@ -1,149 +1,193 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Heart, Share2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, ExternalLink, Star } from 'lucide-react';
 import { toast } from 'sonner';
-import { Gift } from '@/types';
-import { getGiftById } from '@/lib/gifts';
+import { useGiftDetails } from '@/hooks/useGiftDetails';
+import { useFavorites } from '@/context/FavoritesContext';
+import GiftCard from '@/components/gifts/GiftCard';
 import LoadingState from '@/components/ui/LoadingState';
 
 export default function GiftDetailsPage({ params }: { params: { id: string } }) {
-  const [gift, setGift] = useState<Gift | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
+  const { gift, loading, error, relatedGifts } = useGiftDetails(params.id);
+  const { addFavorite, removeFavorite, isFavorite } = useFavorites();
 
-  useEffect(() => {
-    const fetchGift = () => {
-      const giftData = getGiftById(params.id);
-      setGift(giftData || null);
-      setIsLoading(false);
-    };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingState />
+      </div>
+    );
+  }
 
-    fetchGift();
-  }, [params.id]);
+  if (error || !gift) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <h2 className="text-2xl font-bold mb-4">Gift Not Found</h2>
+        <p className="text-gray-600 mb-8">The gift you're looking for doesn't exist.</p>
+        <Link
+          href="/browse"
+          className="inline-flex items-center px-6 py-3 rounded-lg bg-primary text-white hover:bg-primary/90"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          Browse Gifts
+        </Link>
+      </div>
+    );
+  }
+
+  const handleFavoriteToggle = () => {
+    if (isFavorite(gift.id)) {
+      removeFavorite(gift.id);
+      toast.success('Removed from favorites');
+    } else {
+      addFavorite(gift);
+      toast.success('Added to favorites');
+    }
+  };
 
   const handleShare = async () => {
     try {
       await navigator.share({
-        title: gift?.name,
-        text: gift?.description,
-        url: window.location.href,
+        title: gift.name,
+        text: gift.description,
+        url: window.location.href
       });
-    } catch (error) {
+    } catch (err) {
       // Fallback to copying to clipboard
       navigator.clipboard.writeText(window.location.href);
       toast.success('Link copied to clipboard!');
     }
   };
 
-  if (isLoading) return <LoadingState />;
-  if (!gift) return <div>Gift not found</div>;
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        {/* Back Button */}
-        <Link
-          href="/browse"
-          className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-8"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Browse
-        </Link>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Image */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="relative aspect-square rounded-2xl overflow-hidden"
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container mx-auto px-4">
+        {/* Navigation */}
+        <div className="mb-8">
+          <Link
+            href="/browse"
+            className="inline-flex items-center text-gray-600 hover:text-gray-900"
           >
-            <Image
-              src={gift.imageUrl}
-              alt={gift.name}
-              fill
-              className="object-cover"
-              priority
-            />
-          </motion.div>
-
-          {/* Content */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-col"
-          >
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">{gift.name}</h1>
-            
-            <div className="flex items-center gap-4 mb-6">
-              <span className="text-2xl font-bold text-gray-900">
-                ${gift.price}
-              </span>
-              <div className="flex gap-2">
-                {gift.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <p className="text-gray-600 mb-8">{gift.description}</p>
-
-            <div className="flex items-center gap-4 mt-auto">
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  setIsLiked(!isLiked);
-                  toast.success(
-                    isLiked ? 'Removed from favorites' : 'Added to favorites'
-                  );
-                }}
-                className={`p-3 rounded-full ${
-                  isLiked ? 'text-red-500 bg-red-50' : 'text-gray-400 hover:text-red-500 bg-gray-100'
-                }`}
-              >
-                <Heart className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} />
-              </motion.button>
-
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={handleShare}
-                className="p-3 rounded-full text-gray-400 hover:text-gray-600 bg-gray-100"
-              >
-                <Share2 className="w-6 h-6" />
-              </motion.button>
-
-              <motion.a
-                href={gift.affiliateLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-              >
-                View Deal
-                <ExternalLink className="w-5 h-5 ml-2" />
-              </motion.a>
-            </div>
-          </motion.div>
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Browse
+          </Link>
         </div>
 
-        {/* Similar Gifts */}
-        {/* Add similar gifts section here */}
-      </motion.div>
+        {/* Gift Details */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6">
+            {/* Image */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative aspect-square rounded-lg overflow-hidden"
+            >
+              <Image
+                src={gift.imageUrl}
+                alt={gift.name}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+                priority
+              />
+            </motion.div>
+
+            {/* Details */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-6"
+            >
+              <div>
+                <h1 className="text-3xl font-bold mb-2">{gift.name}</h1>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <span className="inline-flex items-center">
+                    <Star className="w-5 h-5 text-yellow-400 mr-1" />
+                    {gift.rating}
+                  </span>
+                  <span>•</span>
+                  <span className="capitalize">{gift.category}</span>
+                </div>
+              </div>
+
+              <div className="text-2xl font-bold text-primary">
+                ${gift.price.toFixed(2)}
+              </div>
+
+              <p className="text-gray-600">{gift.description}</p>
+
+              {/* Specifications */}
+              {gift.specifications && (
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold mb-2">Specifications</h3>
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    {Object.entries(gift.specifications).map(([key, value]) => (
+                      <div key={key}>
+                        <dt className="text-gray-600 text-sm">{key}</dt>
+                        <dd className="font-medium">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-4 pt-4">
+                <a
+                  href={gift.affiliateLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 inline-flex justify-center items-center px-6 py-3 rounded-lg bg-primary text-white hover:bg-primary/90"
+                >
+                  View Product
+                  <ExternalLink className="w-5 h-5 ml-2" />
+                </a>
+                <button
+                  onClick={handleFavoriteToggle}
+                  className={`p-3 rounded-lg border ${
+                    isFavorite(gift.id)
+                      ? 'bg-primary/10 border-primary'
+                      : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <Heart
+                    className={`w-6 h-6 ${
+                      isFavorite(gift.id) ? 'fill-primary text-primary' : 'text-gray-600'
+                    }`}
+                  />
+                </button>
+                <button
+                  onClick={handleShare}
+                  className="p-3 rounded-lg border border-gray-200 hover:bg-gray-50"
+                >
+                  <Share2 className="w-6 h-6 text-gray-600" />
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Related Gifts */}
+        {relatedGifts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mt-12"
+          >
+            <h2 className="text-2xl font-bold mb-6">You Might Also Like</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {relatedGifts.map(relatedGift => (
+                <GiftCard key={relatedGift.id} gift={relatedGift} />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </div>
     </div>
   );
 }

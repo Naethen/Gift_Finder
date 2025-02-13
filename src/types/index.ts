@@ -7,6 +7,7 @@ export interface Gift {
   category: string;
   tags: string[];
   affiliateLink: string;
+  rating: number;
 }
 
 export interface QuizFormData {
@@ -18,7 +19,6 @@ export interface QuizFormData {
   recipientAge: number;
   relationship: string;
   interests: string[];
-  gender?: string;
 }
 
 export interface FilterOptions {
@@ -36,18 +36,19 @@ export type PriceRange = {
 };
 
 export interface GiftDetails extends Gift {
-  reviews?: Review[];
-  rating?: number;
+  reviews: Review[];
+  rating: number;
   availability: 'in_stock' | 'out_of_stock' | 'pre_order';
-  specifications?: Record<string, string>;
+  specifications: Record<string, string>;
 }
 
 export interface Review {
   id: string;
   userId: string;
+  userName: string;
   rating: number;
   comment: string;
-  createdAt: string;
+  date: string;
 }
 
 export type GiftCategory = {
@@ -57,7 +58,8 @@ export type GiftCategory = {
   imageUrl?: string;
 };
 
-export type QuizResponse = {
+export interface QuizResponse {
+  formData: QuizFormData;
   recommendations: Gift[];
-  matchScores: Record<string, number>;
+  timestamp: string;
 }

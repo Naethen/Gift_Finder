@@ -17,9 +17,13 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
 
   // Load favorites from localStorage on mount
   useEffect(() => {
-    const savedFavorites = localStorage.getItem('favorites');
-    if (savedFavorites) {
-      setFavorites(JSON.parse(savedFavorites));
+    const storedFavorites = localStorage.getItem('favorites');
+    if (storedFavorites) {
+      try {
+        setFavorites(JSON.parse(storedFavorites));
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+      }
     }
   }, []);
 
@@ -30,10 +34,8 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
 
   const addFavorite = (gift: Gift) => {
     setFavorites(prev => {
-      if (!prev.find(f => f.id === gift.id)) {
-        return [...prev, gift];
-      }
-      return prev;
+      if (prev.some(fav => fav.id === gift.id)) return prev;
+      return [...prev, gift];
     });
   };
 
@@ -47,12 +49,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <FavoritesContext.Provider
-      value={{
-        favorites,
-        addFavorite,
-        removeFavorite,
-        isFavorite,
-      }}
+      value={{ favorites, addFavorite, removeFavorite, isFavorite }}
     >
       {children}
     </FavoritesContext.Provider>
